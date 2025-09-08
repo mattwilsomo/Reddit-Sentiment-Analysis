@@ -1,6 +1,8 @@
 require("dotenv").config();
 const Snoowrap = require("snoowrap");
+const { walkAndCollect } = require("./utils.js"); 
 
+// Initialize Snoowrap with Reddit app credentials
 const r = new Snoowrap({
     userAgent: process.env.USER_AGENT,
     clientId: process.env.CLIENT_ID,
@@ -35,46 +37,25 @@ async function fetchPostsAndComments() {
         allCommentsCollected = allCommentsCollected.concat(commentsFromThisPost);
     }
 
-    // This final log will now work reliably
     console.log("\n=== FINAL RESULTS ===");
     console.log("Total comments collected:", allCommentsCollected.length);
     console.log("Sample of first 3 comments:", allCommentsCollected.slice(0, 3));
     
-    // You can also return the final list if you need to use it elsewhere
+  
     return allCommentsCollected;
 }
 
-// This function now ONLY fetches comments and returns them.
-// It no longer knows about any global list.
+// This function fetches comments and returns them.
 async function fetchCommentsForPost(postId) {
     try {
         const submission = await r.getSubmission(postId).fetch();
-        
-        // expandReplies can be heavy, fetching all might not be necessary
-        // but keeping your original logic.
+
+        // Expand all replies to get the full comment tree
         await submission.expandReplies({ depth: Infinity, limit: Infinity });
 
         // Recursive helper function to flatten the comment tree
-        function walkAndCollect(comments) {
-            let collected = [];
-            comments.forEach(comment => {
-                if (comment && comment.body && !/I am a bot/.test(comment.body)) {
-                    collected.push({
-                        id: comment.id,
-                        body: comment.body,
-                        author: comment.author ? comment.author.name : '[deleted]',
-                        created_utc: comment.created_utc,
-                        parent_id: comment.parent_id
-                    });
-                }
-                if (comment && comment.replies && comment.replies.length > 0) {
-                    collected = collected.concat(walkAndCollect(comment.replies));
-                }
-            });
-            return collected;
-        }
-
         const commentList = walkAndCollect(submission.comments);
+        
         console.log(`Returning ${commentList.length} comments from fetchCommentsForPost.`);
         return commentList; // Return the result
 
