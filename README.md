@@ -13,19 +13,21 @@
 
 <details>
   <summary>Click to expand</summary>
-  ### The data will be kept in two tables**
-  **Table 1**
+  <h3> The data will be kept in two tables </h3>
+  <strong>Table 1</strong>
   raw_posts: id, author, content, timestamp, parent_id
-  **Table 2**
+  <strong>Table 2</strong>
   processed_data: id, author, ticker_symbol, sentiment score 
 </details>
 
 - **Analyse in the python script**
 <details>
   <summary>Click to expand</summary>
-  - Use Regular Expressions or otherwise to identify the ticker
-  - Use VADER to run a sentiment analysis on the body of the text
-  - Write findings to the second table of the database 
+    <ul>
+        <li>Use Regular Expressions or otherwise to identify the ticker</li>
+        <li>Use VADER to run a sentiment analysis on the body of the text</li>
+        <li>Write findings to the second table of the database </li>
+    </ul>
 </details>
 
 - **Compare the changes in the sentiment to historical changes in the stock price**
