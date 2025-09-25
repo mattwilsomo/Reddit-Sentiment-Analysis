@@ -22,13 +22,16 @@
 
 - **Analyse in the python script**
 <details>
-  <summary>Click to expand</summary>
-    <ul>
-        <li>Use Regular Expressions or otherwise to identify the ticker</li>
-        <li>Use VADER to run a sentiment analysis on the body of the text</li>
-        <li>Write findings to the second table of the database </li>
-    </ul>
+<summary>Click to expand</summary>
+
+<ul>
+  <li>Use Regular Expressions or otherwise to identify the ticker</li>
+  <li>Use VADER to run a sentiment analysis on the body of the text</li>
+  <li>Write findings to the second table of the database</li>
+</ul>
+
 </details>
+
 
 - **Compare the changes in the sentiment to historical changes in the stock price**
 
