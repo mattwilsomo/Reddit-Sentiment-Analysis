@@ -17,7 +17,7 @@ async function fetchPostsAndComments() {
     let allCommentsCollected = []; 
     const allPostsData = [];
 
-    const posts = await r.getSubreddit("pennystocks").getHot({ limit: 1 });
+    const posts = await r.getSubreddit("pennystocks").getHot({ limit: 3 });
 
     for (const post of posts) {
         console.log("POST TITLE:\n ", post.title, "\n");
