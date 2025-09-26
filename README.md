@@ -14,6 +14,7 @@
 <details>
   <summary>&nbsp;&nbsp;&nbsp;&nbsp;Click to expand</summary>
   <strong> The data will be kept in two tables </strong>
+  <br>
   <strong>Table 1</strong>
   <br>
   raw_posts: id, author, content, timestamp, parent_id
