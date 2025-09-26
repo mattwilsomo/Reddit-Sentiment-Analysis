@@ -12,17 +12,20 @@
 - **This will then be stored in a postgresql dataset**
 
 <details>
-  <summary>Click to expand</summary>
-  <h3> The data will be kept in two tables </h3>
+  <summary>&nbsp;&nbsp;&nbsp;&nbsp;Click to expand</summary>
+  <strong> The data will be kept in two tables </strong>
   <strong>Table 1</strong>
+  <br>
   raw_posts: id, author, content, timestamp, parent_id
+  <br>
   <strong>Table 2</strong>
+  <br>
   processed_data: id, author, ticker_symbol, sentiment score 
 </details>
 
 - **Analyse in the python script**
 <details>
-<summary>Click to expand</summary>
+<summary>&nbsp;&nbsp;&nbsp;&nbsp;Click to expand</summary>
 
 <ul>
   <li>Use Regular Expressions or otherwise to identify the ticker</li>
