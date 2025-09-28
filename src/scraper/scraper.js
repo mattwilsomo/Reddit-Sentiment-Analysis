@@ -35,6 +35,9 @@ async function fetchPostsAndComments() {
         
         // Use concat or the spread operator to add the new comments
         allCommentsCollected = allCommentsCollected.concat(commentsFromThisPost);
+
+        // add a small delay to avoid hitting rate limits
+        await new Promise(resolve => setTimeout(resolve, 2000));
     }
 
     console.log("\n=== FINAL RESULTS ===");
@@ -47,22 +50,39 @@ async function fetchPostsAndComments() {
 
 // This function fetches comments and returns them.
 async function fetchCommentsForPost(postId) {
-    try {
-        const submission = await r.getSubmission(postId).fetch();
+    let retries = 0;
+    const maxRetries = 5;
+    const retryDelay = 2000; // 2 seconds, initial delay
 
-        // Expand all replies to get the full comment tree
-        await submission.expandReplies({ depth: Infinity, limit: Infinity });
+    while (retries < maxRetries) {
+        try {
+            const submission = await r.getSubmission(postId).fetch();
 
-        // Recursive helper function to flatten the comment tree
-        const commentList = walkAndCollect(submission.comments);
-        
-        console.log(`Returning ${commentList.length} comments from fetchCommentsForPost.`);
-        return commentList; // Return the result
+            // Expand replies, to get a deeper comment tree, 4 levels deep, max 5 replies each
+            await submission.expandReplies({ depth: 4, limit: 5 });
 
-    } catch (error) {
-        console.error("An error occurred while fetching comments: ", error);
-        return []; // Return an empty array on error to prevent crashes
+            // Recursive helper function to flatten the comment tree
+            const commentList = walkAndCollect(submission.comments);
+            
+            console.log(`Returning ${commentList.length} comments from fetchCommentsForPost.`);
+            return commentList; // Return the result
+
+        } catch (error) {
+
+            if (error.statusCode === 429) {
+                retries++;
+                const delay = retryDelay * Math.pow(2,retries); // Exponential backoff
+                console.warn(`Rate limit exceeded. Retrying in ${delay/1000} seconds...`)
+                await new Promise(resolve => setTimeout (resolve, delay))
+        } else{
+            console.error("Error fetching comments:", error);
+            return []; // Return empty array on other errors
+        }
     }
+    
+    }
+    console.error("Max retries reached. Returning empty comment list.");
+    return []; // Return empty array if max retries reached
 }
 
 // Start the process
