@@ -12,21 +12,24 @@ const r = new Snoowrap({
 });
 
 // Main function to orchestrate everything
+
 async function fetchPostsAndComments() {
     // This list is now local to the main function
     let allCommentsCollected = []; 
     const allPostsData = [];
+    const subreddit = "pennystocks";
 
-    const posts = await r.getSubreddit("pennystocks").getHot({ limit: 3 });
+    const posts = await r.getSubreddit(subreddit).getHot({ limit: 3 });
 
     for (const post of posts) {
         console.log("POST TITLE:\n ", post.title, "\n");
         allPostsData.push({
-            id: post.id,
+            id: post.name,
             title: post.title,
             body: post.body,
             author: post.author.name,
             created_utc: post.created_utc,
+            score: post.score
         });
 
         // Await the comments and add them to our local list
@@ -45,7 +48,7 @@ async function fetchPostsAndComments() {
     console.log("Sample of first 3 comments:", allCommentsCollected.slice(0, 3));
     
   
-    return allCommentsCollected;
+    return [allPostsData, allCommentsCollected];
 }
 
 // This function fetches comments and returns them.
