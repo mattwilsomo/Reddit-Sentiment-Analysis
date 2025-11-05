@@ -119,7 +119,8 @@ async function batchUpsertComments(comments, chunkSize = 200) {
           comment.author,
           comment.created_utc,
           comment.post_id,
-          parentCommentId
+          parentCommentId,
+          
         );
 
         const nums = Array.from({ length: colsPerRow }, (_, i) => `$${offset + i + 1}`);
