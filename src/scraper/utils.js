@@ -3,7 +3,7 @@ function walkAndCollect(comments) {
         comments.forEach(comment => {
             if (comment && comment.body && !/I am a bot/.test(comment.body)) {
                 collected.push({
-                    id: comment.name,
+                    id: comment.id,
                     body: comment.body,
                     author: comment.author ? comment.author.name : '[deleted]',
                     created_utc: comment.created_utc,

@@ -1,4 +1,5 @@
 require("dotenv").config();
+require('../envCheck');
 const Snoowrap = require("snoowrap");
 const { walkAndCollect } = require("./utils.js"); 
 

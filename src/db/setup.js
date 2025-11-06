@@ -1,6 +1,7 @@
 // Import the PostgreSQL connection pool
 // (connection.js should export a configured 'pg' Pool instance)
 const pool = require('./connection.js');
+require('../envCheck'); // fail-fast if env missing
 
 // ==========================================
 // Function: setupDatabase()
@@ -39,8 +40,9 @@ async function setupDatabase() {
             body TEXT,                                          -- Comment body text
             author TEXT,                                        -- Comment author
             created_utc BIGINT,                                 -- UTC timestamp from Reddit (epoch)
+            parent_id VARCHAR(255) REFERENCES comments(id), -- Optional self-reference for nested replies
             post_id VARCHAR(255) REFERENCES posts(id),          -- Foreign key → parent post
-            parent_comment_id VARCHAR(255) REFERENCES comments(id), -- Optional self-reference for nested replies
+            score INTEGER,                                        -- Reddit upvote score
             inserted_at TIMESTAMP WITH TIME ZONE DEFAULT now()  -- When this comment was inserted
         );`;
 
