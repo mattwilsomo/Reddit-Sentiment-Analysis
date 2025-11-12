@@ -89,5 +89,13 @@ async function fetchCommentsForPost(postId) {
     return []; // Return empty array if max retries reached
 }
 
-// Start the process
-fetchPostsAndComments();
+// exports function
+module.exports = {fetchPostsAndComments};
+
+//runs code in terminal 
+if (require.main === module){
+    fetchPostsAndComments().catch(err =>{
+        console.error("Error in fetchPostsAndComments: ",err);
+        process.exit(1);
+    })
+}

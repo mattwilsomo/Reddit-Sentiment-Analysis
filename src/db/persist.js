@@ -102,7 +102,7 @@ async function batchUpsertComments(comments, chunkSize = 200) {
   const chunks = chunkArray(comments, chunkSize);
 
   for (const chunk of chunks) {
-    const colsPerRow = 6; // id, body, author, created_utc, post_id, parent_comment_id
+    const colsPerRow = 7; // id, body, author, created_utc, parent_id, post_id, score
     const values = [];
 
     // Build placeholders and collect all values
@@ -111,7 +111,7 @@ async function batchUpsertComments(comments, chunkSize = 200) {
         const offset = rowIndex * colsPerRow;
 
         // Handle different field names that may come from the scraper
-        const parentCommentId = comment.parent_comment_id ?? comment.parent_id ?? null;
+        const parentCommentId = comment.parent_id ?? comment.parent_id ?? null;
 
         values.push(
           comment.id,
@@ -130,14 +130,15 @@ async function batchUpsertComments(comments, chunkSize = 200) {
 
     // SQL statement: insert many rows or update if conflict on id
     const upsertCommentQuery = `
-      INSERT INTO comments (id, body, author, created_utc, post_id, parent_comment_id)
+      INSERT INTO comments (id, body, author, created_utc, parent_id, post_id, score)
       VALUES ${placeholders}
       ON CONFLICT (id) DO UPDATE
       SET body = EXCLUDED.body,
           author = EXCLUDED.author,
           created_utc = EXCLUDED.created_utc,
           post_id = EXCLUDED.post_id,
-          parent_comment_id = EXCLUDED.parent_comment_id;
+          parent_id = EXCLUDED.parent_id,
+          score = EXCLUDED.score;
     `;
 
     try {
