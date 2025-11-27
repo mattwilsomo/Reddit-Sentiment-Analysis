@@ -6,7 +6,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node src/scraper/scraper.js",
-    "db-setup": "node src/db/setup.js"
+    "db-setup": "node src/db/setup.js",
+    "collect": "node scripts/collect_and_persist.js"
   },
   "dependencies": {
     "pg": "^8.16.3",

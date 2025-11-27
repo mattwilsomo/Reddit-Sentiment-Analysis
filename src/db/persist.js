@@ -92,7 +92,6 @@ async function batchUpsertPosts(posts, chunkSize = 50) {
 async function batchUpsertComments(comments, chunkSize = 200) {
   if (!Array.isArray(comments) || comments.length === 0) return;
 
-  // Re-use the same chunking helper
   const chunkArray = (arr, size) => {
     const out = [];
     for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
@@ -105,22 +104,98 @@ async function batchUpsertComments(comments, chunkSize = 200) {
     const colsPerRow = 7; // id, body, author, created_utc, parent_id, post_id, score
     const values = [];
 
-    // Build placeholders and collect all values
-    const placeholders = chunk
-      .map((comment, rowIndex) => {
+    // Normalize each comment in the chunk and collect ids present in-chunk
+    const normalized = chunk.map(c => {
+      const rawId = c.id ?? c.name ?? null;
+      const norm = (s) => {
+        if (!s && s !== 0) return null;
+        s = String(s);
+        if (s.startsWith('t1_') || s.startsWith('t3_')) return s.slice(3);
+        return s;
+      };
+
+      const parentRaw = c.parent_id ?? c.parent_comment_id ?? null;
+      const postRaw = c.post_id ?? c.link_id ?? null;
+
+      return {
+        original: c,
+        id: norm(rawId),
+        parent_raw: parentRaw ? String(parentRaw) : null, // keep prefix for checks
+        parent_norm: parentRaw ? norm(parentRaw) : null,
+        post_norm: postRaw ? norm(postRaw) : null,
+        body: c.body ?? null,
+        author: c.author ?? (c.author && c.author.name) ?? null,
+        created_utc: c.created_utc ?? null,
+        score: c.score ?? null
+      };
+    });
+
+    // Set of ids present in this chunk (strings)
+    const chunkIds = new Set(normalized.map(x => x.id).filter(Boolean));
+
+    // Collect candidate parent comment IDs (only for those that are comments, i.e. parent prefix t1_ or parent_norm looks like comment id)
+    // We'll check DB for existence.
+    const parentCandidates = [
+      ...new Set(
+        normalized
+          .map(x => {
+            // If parent_raw starts with t3_, it's a post, not a comment: skip parent candidacy.
+            if (!x.parent_raw) return null;
+            if (typeof x.parent_raw === 'string' && x.parent_raw.startsWith('t3_')) return null;
+            // else parent_norm is candidate comment id
+            return x.parent_norm;
+          })
+          .filter(Boolean)
+      )
+    ];
+
+    // Query DB for parents that already exist (combine with chunkIds later)
+    let existingParents = new Set();
+    if (parentCandidates.length > 0) {
+      try {
+        const res = await pool.query(
+          `SELECT id FROM comments WHERE id = ANY($1)`,
+          [parentCandidates]
+        );
+        for (const r of res.rows) existingParents.add(String(r.id));
+      } catch (err) {
+        console.warn('Warning: parent-existence check failed — continuing and nulling unknown parents.', err);
+        existingParents = new Set();
+      }
+    }
+
+    // Merge chunkIds into existingParents (parents that exist in the same chunk are valid)
+    for (const id of chunkIds) existingParents.add(id);
+
+    // Build placeholders & values. IMPORTANT: ordering must match INSERT column order.
+    const placeholders = normalized
+      .map((c, rowIndex) => {
         const offset = rowIndex * colsPerRow;
 
-        // Handle different field names that may come from the scraper
-        const parentCommentId = comment.parent_id ?? comment.parent_id ?? null;
+        // Determine parent_id to insert:
+        // - If parent_raw indicates a post (starts with t3_), we'll NOT insert it into parent_id (parent_id is for comments).
+        // - If parent_norm exists and is present in existingParents set, use it.
+        // - Otherwise null to avoid FK violation.
+        let parentToInsert = null;
+        if (c.parent_raw && typeof c.parent_raw === 'string' && c.parent_raw.startsWith('t3_')) {
+          parentToInsert = null; // parent is a post (link stays in post_id)
+        } else if (c.parent_norm && existingParents.has(String(c.parent_norm))) {
+          parentToInsert = c.parent_norm;
+        } else {
+          parentToInsert = null;
+        }
+
+        // post_id goes to post column (we normalized it earlier)
+        const postToInsert = c.post_norm ?? null;
 
         values.push(
-          comment.id,
-          comment.body,
-          comment.author,
-          comment.created_utc,
-          parentCommentId,
-          comment.post_id,
-          comment.score
+          c.id ?? null,            // id
+          c.body,                  // body
+          c.author,                // author
+          c.created_utc,           // created_utc
+          parentToInsert,          // parent_id
+          postToInsert,            // post_id
+          c.score                  // score
         );
 
         const nums = Array.from({ length: colsPerRow }, (_, i) => `$${offset + i + 1}`);
@@ -128,7 +203,6 @@ async function batchUpsertComments(comments, chunkSize = 200) {
       })
       .join(',');
 
-    // SQL statement: insert many rows or update if conflict on id
     const upsertCommentQuery = `
       INSERT INTO comments (id, body, author, created_utc, parent_id, post_id, score)
       VALUES ${placeholders}
@@ -136,16 +210,24 @@ async function batchUpsertComments(comments, chunkSize = 200) {
       SET body = EXCLUDED.body,
           author = EXCLUDED.author,
           created_utc = EXCLUDED.created_utc,
-          post_id = EXCLUDED.post_id,
           parent_id = EXCLUDED.parent_id,
+          post_id = EXCLUDED.post_id,
           score = EXCLUDED.score;
     `;
 
+    // Run inside a transaction for safety
+    const client = await pool.connect();
     try {
-      await pool.query(upsertCommentQuery, values);
+      await client.query('BEGIN');
+      await client.query(upsertCommentQuery, values);
+      await client.query('COMMIT');
     } catch (err) {
+      await client.query('ROLLBACK').catch(()=>{});
       console.error('❌ Batch insert comments error:', err);
+      client.release();
       throw err;
+    } finally {
+      try { client.release(); } catch(e) {}
     }
   }
 }

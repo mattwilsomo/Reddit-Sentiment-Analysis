@@ -28,6 +28,9 @@ const { batchUpsertPosts, batchUpsertComments } = require('../src/db/persist');
     const c = await pool.query('SELECT * FROM comments WHERE id=$1', ['test_comment_1']);
     console.log('post rows:', p.rows);
     console.log('comment rows:', c.rows);
+
+    await pool.query("DELETE FROM posts WHERE id = $1",["test_post_1"])
+    await pool.query("DELETE FROM comments WHERE id = $1",["test_comment_1"])
   } catch (err) {
     console.error(err);
   } finally {

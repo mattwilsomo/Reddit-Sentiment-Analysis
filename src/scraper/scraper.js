@@ -14,20 +14,20 @@ const r = new Snoowrap({
 
 // Main function to orchestrate everything
 
-async function fetchPostsAndComments() {
+async function fetchPostsAndComments(subreddit , max ) {
     // This list is now local to the main function
     let allCommentsCollected = []; 
     const allPostsData = [];
-    const subreddit = "pennystocks";
 
-    const posts = await r.getSubreddit(subreddit).getHot({ limit: 3 });
+    const posts = await r.getSubreddit(subreddit).getHot({ limit: max });
 
     for (const post of posts) {
-        console.log("POST TITLE:\n ", post.title, "\n");
+        // console.log("POST TITLE:\n ", post.title, "\n");
         allPostsData.push({
-            id: post.name,
+            id: post.id,
+            subreddit: post.subreddit.display_name,
             title: post.title,
-            body: post.body,
+            body: post.selftext,
             author: post.author.name,
             created_utc: post.created_utc,
             score: post.score
@@ -35,7 +35,7 @@ async function fetchPostsAndComments() {
 
         // Await the comments and add them to our local list
         const commentsFromThisPost = await fetchCommentsForPost(post.id);
-        console.log(`Found ${commentsFromThisPost.length} comments for post ${post.id}`);
+        //console.log(`Found ${commentsFromThisPost.length} comments for post ${post.id}`);
         
         // Use concat or the spread operator to add the new comments
         allCommentsCollected = allCommentsCollected.concat(commentsFromThisPost);
@@ -44,12 +44,12 @@ async function fetchPostsAndComments() {
         await new Promise(resolve => setTimeout(resolve, 2000));
     }
 
-    console.log("\n=== FINAL RESULTS ===");
-    console.log("Total comments collected:", allCommentsCollected.length);
-    console.log("Sample of first 3 comments:", allCommentsCollected.slice(0, 3));
+    // console.log("\n=== FINAL RESULTS ===");
+    // console.log("Total comments collected:", allCommentsCollected.length);
+    // console.log("Sample of first 3 comments:", allCommentsCollected.slice(0, 3));
     
   
-    return [allPostsData, allCommentsCollected];
+    return {posts: allPostsData, comments: allCommentsCollected};
 }
 
 // This function fetches comments and returns them.
@@ -68,7 +68,7 @@ async function fetchCommentsForPost(postId) {
             // Recursive helper function to flatten the comment tree
             const commentList = walkAndCollect(submission.comments);
             
-            console.log(`Returning ${commentList.length} comments from fetchCommentsForPost.`);
+            //console.log(`Returning ${commentList.length} comments from fetchCommentsForPost.`);
             return commentList; // Return the result
 
         } catch (error) {
