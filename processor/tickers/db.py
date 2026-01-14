@@ -21,7 +21,7 @@ def connection():
             port = DB_PORT,
             password = DB_PASSWORD
         )
-        print("Conenection sucessful")
+        print("Conenection successful")
         return conn
     except Exception as e:
         print("An Error occured while connecting to the database: ", e)
