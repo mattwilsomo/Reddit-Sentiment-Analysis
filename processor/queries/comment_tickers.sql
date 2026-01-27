@@ -1,12 +1,13 @@
 CREATE TABLE IF NOT EXISTS comment_tickers (
     id BIGSERIAL PRIMARY KEY,
     comment_id VARCHAR(255) NOT NULL REFERENCES comments(id),
+    parent_id VARCHAR(255) REFERENCES comments(id)
     post_id VARCHAR(255) NULL REFERENCES posts(id),   -- helpful to query by post
     ticker TEXT NOT NULL,                              -- normalized uppercase ticker
     detected_by TEXT NOT NULL,                         -- 'dollar_regex'|'allcaps_regex'|'symbol_prefix'|'ml'|'propagated'
-    confidence REAL NOT NULL,                          -- 0.0-1.0
+    confidence REAL NOT NULL,                          -- 0.0+
     context_snippet TEXT,                              -- short excerpt around the mention
-    mention_kind TEXT,                                 -- e.g., 'dollar','allcaps','title_inferred'
+    --mention_kind TEXT,                                 -- e.g., 'dollar','allcaps','title_inferred'
     inferred_from_id VARCHAR(255),                     -- if propagated, the comment/post id it was inferred from
     author TEXT,                                       -- comment author (copy for fast aggregation)
     created_utc BIGINT,                                -- copy of comment timestamp (epoch)

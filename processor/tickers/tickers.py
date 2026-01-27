@@ -104,7 +104,7 @@ def process_text(text, ticker_set,*, allow_lowercase = False, threshold = 0.9,po
         if score > threshold:
             valid = True
         if valid:
-            results.append({"ticker": c[0], "kind": c[1], "score": score, "snippet": text[:200]})
+            results.append({"ticker": c[0], "kind": c[1], "score": score, "snippet": text[:200], "inferred_from": None})
     return results
 
 def lounge_id():
@@ -130,7 +130,7 @@ def propogate_for_comment(comment_row, matches_com, matches_post, tree=None):
     tree: ordered list of ancestor comment_ids, e.g. [parent, grandparent, greatgrandparent]
     """
 
-    comment_id, parent_id, post_id, body = comment_row
+    comment_id, parent_id, post_id, body, author, created_utc = comment_row
 
     DECAY = 0.8
     MAX_DEPTH = 3
@@ -217,6 +217,7 @@ def process_posts_from_db(batchSize = 100):
     tickers = load_tickers(path)
     ticker_set = set(tickers["Ticker"])
     matched_ls = []
+
     try:
         curr.execute(
         """SELECT title, id FROM posts
@@ -226,7 +227,6 @@ def process_posts_from_db(batchSize = 100):
                 rows = curr.fetchmany(batchSize)
                 if not rows:
                     break
-                
                 #parrallel processing for speed, args is (comment text, ticker csv)
                 fn = partial(process_text, post=True)
                 args = [(r[0], ticker_set) for r in rows]
@@ -238,7 +238,6 @@ def process_posts_from_db(batchSize = 100):
                     if matches:
                         # print(f"Found matches in: {post[0][:300]}...\n Ticker: {matches[0]["ticker"]} Score: {matches[0]["score"]}\n ")
                         matched_ls.append({"post":[post[0], post[1]], "match_details": matches[0]})
-
     except psyError as e:
         print("Post database error ", e)
     
@@ -263,7 +262,7 @@ def process_db( batchSize = 500):
 
     try:
         count = 0
-        curr.execute("SELECT id, parent_id, post_id,  body FROM comments")
+        curr.execute("SELECT id, parent_id, post_id,  body, author, created_utc FROM comments")
         matched_ls = []
         with Pool(processes=max(1,cpu_count()-1)) as pool:
             while True:
@@ -286,10 +285,10 @@ def process_db( batchSize = 500):
 
                 #matches is a list of dictionaries of all the matches in the comment eg [{'ticker': 'AAPL', 'kind': 'dollar', 'score': 0.95, 'snippet': '...'},]]    
                 for row, matches in zip(rows, bucketed):
-                    comment_id, parent_id, post_id, comment = row
+                    comment_id = row[0]
                     if matches:
-                        print(f"Found matches in: {comment[0][:300]}...\n Ticker: {matches[0]["ticker"]} Score: {matches[0]["score"]}\n {matches}\n", )
-                        matched_ls.append({"comment": [comment_id,comment], "match_details": matches[0]})
+                        #print(f"Found matches in: {comment[0][:300]}...\n Ticker: {matches[0]["ticker"]} Score: {matches[0]["score"]}\n {matches}\n", )
+                        matched_ls.append({"comment": row, "match_details": matches[0]})
                     else:
                         tree = build_ancestor_tree(comment_id, parent_map)
 
@@ -302,10 +301,10 @@ def process_db( batchSize = 500):
 
                         if propagated:
                             matched_ls.append(propagated)
-                            for matched in matched_ls:
-                                if matched["match_details"]["kind"] == "propagated_comment" or  matched["match_details"]["kind"] == "propagated_post":
-                                     print(f"Found matches in: {comment[0][:300]}...\n Ticker: {matched["match_details"]["ticker"]} Score: {matched["match_details"]["score"]}\n {matched}\n", )                
-
+                            # for matched in matched_ls:
+                            #     if matched["match_details"]["kind"] == "propagated_comment" or  matched["match_details"]["kind"] == "propagated_post":
+                            #          #print(f"Found matches in: {comment[0][:300]}...\n Ticker: {matched["match_details"]["ticker"]} Score: {matched["match_details"]["score"]}\n {matched}\n", )                
+                            #         ...
         
     except psyError as e:
         print("Database error: ",e)
@@ -314,10 +313,10 @@ def process_db( batchSize = 500):
     finally:
         curr.close()
         conn.close()
-    return matched_ls
+    return [matched_ls, matches_posts]
 
 
 
        
 if __name__ == "__main__":
-    process_db()
+    matched = process_db()
